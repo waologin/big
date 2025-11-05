@@ -1,55 +1,88 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Secure Chat (Dev)</title>
-  <link rel="stylesheet" href="/assets/css/style.css">
-  <meta name="description" content="Secure Chat - development build">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push送信テスト</title>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <main id="app" class="container">
-    <header>
-      <h1>Secure Chat — 初期設定</h1>
-    </header>
+  <h1>中継サーバー Push送信テスト</h1>
+  <button id="reqPermission">通知権限リクエスト</button>
+  <button id="sendTest">テスト送信</button>
+  <pre id="output"></pre>
 
-    <section id="home" class="panel">
-      <p>モードを選択してください。</p>
-      <div class="buttons">
-        <button id="modeA" class="btn">A：QRを表示する（発行側）</button>
-        <button id="modeB" class="btn">B：QRを読む（読取側）</button>
-      </div>
-    </section>
+  <script type="module">
+    import { secureSendPush } from "./src/utils/secureSendPush.js";
 
-    <section id="qrArea" class="panel hidden">
-      <h2>QRエリア</h2>
-      <div id="qrDisplay" class="qr-box"></div>
-      <div id="qrReader" class="qr-box hidden">
-        <video id="qrVideo" autoplay muted playsinline></video>
-        <canvas id="qrCanvas" class="hidden"></canvas>
-      </div>
-      <div class="controls">
-        <button id="btnBackHome" class="btn">戻る</button>
-      </div>
-    </section>
+    const output = document.getElementById("output");
 
-    <section id="chatArea" class="panel hidden">
-      <h2>チャット</h2>
-      <div id="messages" class="messages"></div>
-      <div class="composer">
-        <input id="messageInput" placeholder="メッセージを入力" />
-        <button id="sendBtn" class="btn">送信</button>
-      </div>
-      <div class="controls">
-        <button id="btnEndSession" class="btn">セッション終了</button>
-      </div>
-    </section>
+    // SW登録
+    async function registerSW() {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.register('./sw.js');
+        console.log("SW registered:", reg);
+        return reg;
+      } else {
+        throw new Error("Service Worker not supported");
+      }
+    }
 
-    <footer>
-      <small>開発用ビルド — Secure Chat</small>
-    </footer>
-  </main>
+    // 通知権限リクエスト
+    async function requestNotificationPermission() {
+      const perm = await Notification.requestPermission();
+      output.textContent += `通知権限: ${perm}\n`;
+      return perm;
+    }
 
-  <script type="module" src="/src/main.js"></script>
+    // Pushサブスクリプション取得
+    async function getSubscription(reg) {
+      const vapidKey = "<ここにVAPID公開鍵>"; // Base64URL形式で設定
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey
+        });
+      }
+      return sub.toJSON();
+    }
+
+    // テスト送信
+    async function sendTest(sub) {
+      const payload = {
+        senderId: "alice",
+        recipientId: "bob",
+        message: "これはテストメッセージです！"
+      };
+
+      try {
+        const res = await secureSendPush(payload, sub);
+        const json = await res.json();
+        output.textContent += `送信成功:\n${JSON.stringify(json, null, 2)}\n`;
+      } catch (err) {
+        output.textContent += `送信失敗:\n${err.message}\n`;
+      }
+    }
+
+    // ボタン動作
+    document.getElementById("reqPermission").onclick = async () => {
+      try {
+        await requestNotificationPermission();
+      } catch (e) {
+        output.textContent += `Error: ${e.message}\n`;
+      }
+    };
+
+    document.getElementById("sendTest").onclick = async () => {
+      try {
+        const reg = await registerSW();
+        const sub = await getSubscription(reg);
+        await sendTest(sub);
+      } catch (e) {
+        output.textContent += `Error: ${e.message}\n`;
+      }
+    };
+  </script>
 </body>
 </html>
