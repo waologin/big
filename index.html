@@ -23,43 +23,66 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    button:hover {
-      background: #0056b3;
-    }
+    button:hover { background: #0056b3; }
     pre {
       background: #f4f4f4;
       padding: 10px;
       border-radius: 6px;
       overflow-x: auto;
     }
+    .error {
+      background: #ffe5e5;
+      color: #d00;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+    .success {
+      background: #eaffea;
+      color: #064;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
   <h1>🔔 Push通知テスト</h1>
-  <p>以下のボタンで通知許可を取得し、購読情報を表示します。</p>
+  <p>通知許可を取得して購読情報を表示します。</p>
   <button id="btnSubscribe">通知を許可して購読する</button>
 
-  <h3>📡 購読情報</h3>
-  <pre id="output">（まだ未取得）</pre>
+  <div id="result"></div>
 
   <script type="module">
     import { getPushSubscription } from "./src/utils/getPushSubscription.js";
 
     const btn = document.getElementById("btnSubscribe");
-    const output = document.getElementById("output");
+    const result = document.getElementById("result");
 
     btn.addEventListener("click", async () => {
-      output.textContent = "⏳ 通知登録中...";
+      result.innerHTML = `<div>⏳ 通知登録中...</div>`;
       try {
         const sub = await getPushSubscription();
+
         if (!sub) {
-          output.textContent = "❌ 通知が許可されなかったか、エラーが発生しました。";
+          result.innerHTML = `<div class="error">❌ 通知が拒否されました。</div>`;
           return;
         }
-        output.textContent = JSON.stringify(sub, null, 2);
+
+        result.innerHTML = `
+          <div class="success">✅ 購読成功！</div>
+          <pre>${JSON.stringify(sub, null, 2)}</pre>
+        `;
       } catch (err) {
-        output.textContent = "⚠️ エラー: " + err.message;
         console.error(err);
+        result.innerHTML = `
+          <div class="error">
+            ❌ エラー発生：${err.message || err}
+            ${err.stack ? `<br><br>詳細：${err.stack}` : ""}
+          </div>
+        `;
       }
     });
   </script>
