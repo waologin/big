@@ -3,7 +3,7 @@
  * @returns {Promise<Object>} Web Push Subscription 情報 (endpoint, keys)
  */
 export async function requestNotificationPermission() {
-  const VAPID_PUBLIC_KEY = "あなたのVAPID公開鍵をここに"; // ←サーバの /vapidPublicKey で取得したものを固定で埋め込む
+  const VAPID_PUBLIC_KEY = "BGWYAYFk7U10CUO_gFbRh3-L-eKTZM0ZeKoWRpCouRpG5lWHxFfZRcJWBZ_AXrIqJZitKXR8ScTUriSRxgIu8ig"; // ←サーバの /vapidPublicKey で取得したものを固定で埋め込む
   const serviceWorkerPath = "/service-worker.js"; // 必要に応じて変更
 
   try {
