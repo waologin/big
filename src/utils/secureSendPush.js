@@ -1,5 +1,3 @@
-// src/utils/secureSendPush.js
-
 /**
  * 安全なPush送信関数
  * @param {Object} params - メッセージ内容 (例: { senderId, recipientId, message })
@@ -8,26 +6,27 @@
  */
 export async function secureSendPush(params, subscription) {
   const API_URL = "https://tyuukanser.onrender.com/sendPush";
-  const PUBLIC_KEY_URL = "https://tyuukanser.onrender.com/publicKey"; // 公開鍵取得エンドポイント
+
+  // 🔐 サーバのRSA公開鍵（PEM形式）を直接埋め込み
+  const SERVER_PUBLIC_PEM = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0/1Q6CYRhR6E+QRf/5CW
+vw9lvOMueA+UnD8APePVoGlIvpb8goVX/jXrpmNOMVI3QA13yrLiZ/FKCcCJ5b12
+kpcId6BN9hO0ZO8ykGuKlmI74L/XQZ19NSGFIq847iN8sh3R5P36/eObhcfZRZqS
+pyth7EroHnP1EG7Wgd8MRSmbbOv1Z7cRnlrPRhDxc8vbGFFRifEHtouy8LlmcdNm
+Nvh6BGvbFRd2LBG87uNT+3uqgMUzweeLzrQhnphXkgoFH/Ayl4s2Z9dyy7DEGKTY
+A7PSDAt0nzggY2iuKsGcabDbrHHkTpxd1MsIGRTS/xJjZobHKR5XCguXZjRn6SVh
+7wIDAQAB
+-----END PUBLIC KEY-----`;
 
   try {
-    // === 1️⃣ 公開鍵の取得（キャッシュ優先） ===
-    let serverPublicKey = localStorage.getItem("SERVER_PUBLIC_PEM");
-    if (!serverPublicKey) {
-      const res = await fetch(PUBLIC_KEY_URL);
-      const data = await res.json();
-      serverPublicKey = data.publicKey;
-      localStorage.setItem("SERVER_PUBLIC_PEM", serverPublicKey);
-    }
-
-    // === 2️⃣ AES-GCM 鍵生成 ===
+    // === 1️⃣ AES-GCM 鍵生成 ===
     const aesKey = await crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"]
     );
 
-    // === 3️⃣ WebPush購読情報をAES暗号化 ===
+    // === 2️⃣ WebPush購読情報をAES暗号化 ===
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoder = new TextEncoder();
     const encodedAuth = encoder.encode(JSON.stringify(subscription));
@@ -39,16 +38,18 @@ export async function secureSendPush(params, subscription) {
     );
     const encryptedAuth = btoa(String.fromCharCode(...new Uint8Array(encryptedAuthBuffer)));
 
-    // === 4️⃣ AES鍵をRSA-OAEPで暗号化 ===
-    const publicKey = await importRSAPublicKey(serverPublicKey);
+    // === 3️⃣ AES鍵をRSA-OAEPで暗号化 ===
+    const publicKey = await importRSAPublicKey(SERVER_PUBLIC_PEM);
+    const rawAesKey = await crypto.subtle.exportKey("raw", aesKey);
+
     const wrappedKeyBuffer = await crypto.subtle.encrypt(
       { name: "RSA-OAEP" },
       publicKey,
-      await crypto.subtle.exportKey("raw", aesKey)
+      rawAesKey
     );
     const wrappedKey = btoa(String.fromCharCode(...new Uint8Array(wrappedKeyBuffer)));
 
-    // === 5️⃣ JSON送信データ構築 ===
+    // === 4️⃣ JSON送信データ構築 ===
     const payload = {
       ...params,
       encAuth: encryptedAuth,
@@ -57,7 +58,7 @@ export async function secureSendPush(params, subscription) {
       clientTimestamp: new Date().toISOString(),
     };
 
-    // === 6️⃣ POST送信 ===
+    // === 5️⃣ POST送信 ===
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,7 +77,6 @@ export async function secureSendPush(params, subscription) {
  * PEM形式のRSA公開鍵文字列をCryptoKeyに変換
  */
 async function importRSAPublicKey(pem) {
-  // PEM文字列をバイナリ化
   const b64 = pem
     .replace(/-----BEGIN PUBLIC KEY-----/, "")
     .replace(/-----END PUBLIC KEY-----/, "")
