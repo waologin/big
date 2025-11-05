@@ -2,87 +2,74 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="theme-color" content="#1a1a1a">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Push送信テスト</title>
+  <title>Secure Push Test</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <h1>中継サーバー Push送信テスト</h1>
-  <button id="reqPermission">通知権限リクエスト</button>
-  <button id="sendTest">テスト送信</button>
-  <pre id="output"></pre>
+  <h1>🔐 Secure Push Test</h1>
+
+  <button id="btn-register">通知登録</button>
+  <button id="btn-send">テスト送信</button>
+
+  <pre id="log"></pre>
 
   <script type="module">
-    import { secureSendPush } from "./src/utils/secureSendPush.js";
+    import { secureSendPush } from './js/secureSendPush.js';
+    import { SERVER_API_URL } from './js/constants.js';
 
-    const output = document.getElementById("output");
+    const log = (msg) => {
+      const pre = document.getElementById("log");
+      pre.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+    };
 
-    // SW登録
-    async function registerSW() {
-      if ('serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.register('./sw.js');
-        console.log("SW registered:", reg);
-        return reg;
-      } else {
-        throw new Error("Service Worker not supported");
+    // Service Worker 登録
+    navigator.serviceWorker.register('sw.js').then(() => {
+      log("ServiceWorker registered.");
+    });
+
+    // 通知登録
+    document.getElementById('btn-register').onclick = async () => {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        return log("通知許可が必要です。");
       }
-    }
-
-    // 通知権限リクエスト
-    async function requestNotificationPermission() {
-      const perm = await Notification.requestPermission();
-      output.textContent += `通知権限: ${perm}\n`;
-      return perm;
-    }
-
-    // Pushサブスクリプション取得
-    async function getSubscription(reg) {
-      const vapidKey = "<ここにVAPID公開鍵>"; // Base64URL形式で設定
-      let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: vapidKey
-        });
-      }
-      return sub.toJSON();
-    }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array('<VAPID公開鍵>')
+      });
+      localStorage.setItem("subscription", JSON.stringify(sub.toJSON()));
+      log("通知登録完了。");
+    };
 
     // テスト送信
-    async function sendTest(sub) {
+    document.getElementById('btn-send').onclick = async () => {
+      const sub = JSON.parse(localStorage.getItem("subscription"));
+      if (!sub) return log("通知登録が未完了。");
+
       const payload = {
         senderId: "alice",
         recipientId: "bob",
-        message: "これはテストメッセージです！"
+        message: "テストメッセージ from client"
       };
 
-      try {
-        const res = await secureSendPush(payload, sub);
-        const json = await res.json();
-        output.textContent += `送信成功:\n${JSON.stringify(json, null, 2)}\n`;
-      } catch (err) {
-        output.textContent += `送信失敗:\n${err.message}\n`;
+      const res = await secureSendPush(payload, sub);
+      log(`送信完了: ${res.status}`);
+    };
+
+    // Base64 helper
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
       }
+      return outputArray;
     }
-
-    // ボタン動作
-    document.getElementById("reqPermission").onclick = async () => {
-      try {
-        await requestNotificationPermission();
-      } catch (e) {
-        output.textContent += `Error: ${e.message}\n`;
-      }
-    };
-
-    document.getElementById("sendTest").onclick = async () => {
-      try {
-        const reg = await registerSW();
-        const sub = await getSubscription(reg);
-        await sendTest(sub);
-      } catch (e) {
-        output.textContent += `Error: ${e.message}\n`;
-      }
-    };
   </script>
 </body>
 </html>
