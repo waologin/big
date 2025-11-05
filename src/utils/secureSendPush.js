@@ -1,92 +1,93 @@
-import { pemToArrayBuffer, arrayBufferToBase64Url } from "./cryptoHelpers.js";
-import { RELAY_ORIGIN } from "../config/constants.js";
+// src/utils/secureSendPush.js
 
 /**
- * 中継サーバーへ安全に暗号化リクエストを送る関数
- * @param {Object} params - 任意の送信データ（senderId, recipientId, messageなど）
- * @param {Object} authInfo - WebPushのsubscriptionなど
- * @param {Object} [options]
- * @param {number} [options.retries=2] - 失敗時の再試行回数
- * @param {boolean} [options.refreshKeyOnFail=true] - 公開鍵無効時に再取得するか
- * @returns {Promise<Response>} fetchのResponse
+ * 安全なPush送信関数
+ * @param {Object} params - メッセージ内容 (例: { senderId, recipientId, message })
+ * @param {Object} subscription - WebPush購読情報 (endpoint, keys)
+ * @returns {Promise<Response>} サーバからのレスポンス
  */
-export async function secureSendPush(params, authInfo, options = {}) {
-  const { retries = 2, refreshKeyOnFail = true } = options;
-  let relayPublicKeyPem = localStorage.getItem("relayPublicKey");
+export async function secureSendPush(params, subscription) {
+  const API_URL = "https://tyuukanser.onrender.com/sendPush";
+  const PUBLIC_KEY_URL = "https://tyuukanser.onrender.com/publicKey"; // 公開鍵取得エンドポイント
 
-  // 内部関数：リレー鍵取得
-  async function fetchRelayPublicKey(force = false) {
-    if (!relayPublicKeyPem || force) {
-      const res = await fetch(`${RELAY_ORIGIN}/publicKey`);
-      if (!res.ok) throw new Error("Failed to fetch relay public key");
+  try {
+    // === 1️⃣ 公開鍵の取得（キャッシュ優先） ===
+    let serverPublicKey = localStorage.getItem("SERVER_PUBLIC_PEM");
+    if (!serverPublicKey) {
+      const res = await fetch(PUBLIC_KEY_URL);
       const data = await res.json();
-      relayPublicKeyPem = data.publicKeyPem;
-      localStorage.setItem("relayPublicKey", relayPublicKeyPem);
+      serverPublicKey = data.publicKey;
+      localStorage.setItem("SERVER_PUBLIC_PEM", serverPublicKey);
     }
-  }
 
-  // 内部関数：暗号化処理 + リクエスト実行
-  async function executeSend() {
-    await fetchRelayPublicKey();
-
-    const relayPublicKey = await crypto.subtle.importKey(
-      "spki",
-      pemToArrayBuffer(relayPublicKeyPem),
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      false,
-      ["encrypt"]
-    );
-
+    // === 2️⃣ AES-GCM 鍵生成 ===
     const aesKey = await crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"]
     );
 
+    // === 3️⃣ WebPush購読情報をAES暗号化 ===
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const authBytes = new TextEncoder().encode(JSON.stringify(authInfo));
+    const encoder = new TextEncoder();
+    const encodedAuth = encoder.encode(JSON.stringify(subscription));
 
-    const encAuthBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, authBytes);
-    const aesKeyRaw = await crypto.subtle.exportKey("raw", aesKey);
-    const wrappedKeyBuffer = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, relayPublicKey, aesKeyRaw);
+    const encryptedAuthBuffer = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      encodedAuth
+    );
+    const encryptedAuth = btoa(String.fromCharCode(...new Uint8Array(encryptedAuthBuffer)));
 
+    // === 4️⃣ AES鍵をRSA-OAEPで暗号化 ===
+    const publicKey = await importRSAPublicKey(serverPublicKey);
+    const wrappedKeyBuffer = await crypto.subtle.encrypt(
+      { name: "RSA-OAEP" },
+      publicKey,
+      await crypto.subtle.exportKey("raw", aesKey)
+    );
+    const wrappedKey = btoa(String.fromCharCode(...new Uint8Array(wrappedKeyBuffer)));
+
+    // === 5️⃣ JSON送信データ構築 ===
     const payload = {
       ...params,
-      encAuth: arrayBufferToBase64Url(encAuthBuffer),
-      iv: arrayBufferToBase64Url(iv),
-      wrappedKey: arrayBufferToBase64Url(wrappedKeyBuffer),
+      encAuth: encryptedAuth,
+      iv: btoa(String.fromCharCode(...iv)),
+      wrappedKey,
       clientTimestamp: new Date().toISOString(),
     };
 
-    const resp = await fetch(`${RELAY_ORIGIN}/sendPush`, {
+    // === 6️⃣ POST送信 ===
+    const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    return resp;
+    return response;
+
+  } catch (err) {
+    console.error("secureSendPush error:", err);
+    throw err;
   }
+}
 
-  // 実行処理（再試行含む）
-  let attempt = 0;
-  while (attempt <= retries) {
-    try {
-      const resp = await executeSend();
-      if (resp.ok) return resp;
+/**
+ * PEM形式のRSA公開鍵文字列をCryptoKeyに変換
+ */
+async function importRSAPublicKey(pem) {
+  // PEM文字列をバイナリ化
+  const b64 = pem
+    .replace(/-----BEGIN PUBLIC KEY-----/, "")
+    .replace(/-----END PUBLIC KEY-----/, "")
+    .replace(/\s+/g, "");
+  const binaryDer = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 
-      // 公開鍵エラー → 再取得して再試行
-      if (resp.status === 401 && refreshKeyOnFail) {
-        console.warn("[secureSendPush] invalid key, refreshing...");
-        await fetchRelayPublicKey(true);
-        attempt++;
-        continue;
-      }
-
-      throw new Error(`Request failed: ${resp.status}`);
-    } catch (err) {
-      console.error(`[secureSendPush] Attempt ${attempt + 1} failed:`, err);
-      if (attempt >= retries) throw err;
-      attempt++;
-    }
-  }
+  return crypto.subtle.importKey(
+    "spki",
+    binaryDer.buffer,
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    true,
+    ["encrypt"]
+  );
 }
