@@ -16,7 +16,7 @@ export async function requestPushSubscription(opts = {}) {
 
   // --- ここに VAPID 公開鍵（base64url形式）を埋め込む ---
   // 例: 'BM9...XyZ' のような形式（+ → -, / → _, パディングなし）
-  const VAPID_PUBLIC_KEY_BASE64URL = 'ここにあなたのVAPID公開鍵を貼ってください';
+  const VAPID_PUBLIC_KEY_BASE64URL = 'BGWYAYFk7U10CUO_gFbRh3-L-eKTZM0ZeKoWRpCouRpG5lWHxFfZRcJWBZ_AXrIqJZitKXR8ScTUriSRxgIu8ig';
 
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     throw new Error('このブラウザは Service Worker / Push をサポートしていません');
