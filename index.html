@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Secure Chat (Dev)</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <meta name="description" content="Secure Chat - development build">
+</head>
+<body>
+  <main id="app" class="container">
+    <header>
+      <h1>Secure Chat — 初期設定</h1>
+    </header>
+
+    <section id="home" class="panel">
+      <p>モードを選択してください。</p>
+      <div class="buttons">
+        <button id="modeA" class="btn">A：QRを表示する（発行側）</button>
+        <button id="modeB" class="btn">B：QRを読む（読取側）</button>
+      </div>
+    </section>
+
+    <section id="qrArea" class="panel hidden">
+      <h2>QRエリア</h2>
+      <div id="qrDisplay" class="qr-box"></div>
+      <div id="qrReader" class="qr-box hidden">
+        <video id="qrVideo" autoplay muted playsinline></video>
+        <canvas id="qrCanvas" class="hidden"></canvas>
+      </div>
+      <div class="controls">
+        <button id="btnBackHome" class="btn">戻る</button>
+      </div>
+    </section>
+
+    <section id="chatArea" class="panel hidden">
+      <h2>チャット</h2>
+      <div id="messages" class="messages"></div>
+      <div class="composer">
+        <input id="messageInput" placeholder="メッセージを入力" />
+        <button id="sendBtn" class="btn">送信</button>
+      </div>
+      <div class="controls">
+        <button id="btnEndSession" class="btn">セッション終了</button>
+      </div>
+    </section>
+
+    <footer>
+      <small>開発用ビルド — Secure Chat</small>
+    </footer>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
