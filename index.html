@@ -4,72 +4,88 @@
   <meta charset="UTF-8">
   <meta name="theme-color" content="#1a1a1a">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secure Push Test</title>
   <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <title>secureSendPush テスト</title>
+  <script type="module">
+    import { secureSendPush } from "../src/utils/secureSendPush.js";
+
+    const subscription = {
+      "endpoint": "https://web.push.apple.com/QCHB3_7Y5YUEI6BojdhsVXV0LRQW0FWvwOGdxc0ksozenwjwU93kcf4XzXm3P-WoVNvwOxLCAAspGwaZoRAqHn1l-23NAHq-4MHDfLYa-xEDNKZ2y9G8mH6lKH90nXdM3agjCkUa9gneCFrRdpi5x9vPPzFo3skPFxUg0iRmSzw",
+      "keys": {
+        "p256dh": "BHBKuLumhD7tByLIav14QadvvdqPTo0GY62Yd55_GSotVc9WFXROHE9VrLJKHFku90sznWkYAhdpnRibu7sVSFQ",
+        "auth": "l6_s9y3wDqqtc8cbTjOk2Q"
+      }
+    };
+
+    async function testSend() {
+      const log = document.getElementById("log");
+      log.textContent = "🔄 送信中...\n";
+
+      try {
+        const response = await secureSendPush(
+          {
+            senderId: "alice",
+            recipientId: "bob",
+            message: document.getElementById("msg").value || "テストメッセージ"
+          },
+          subscription
+        );
+
+        const text = await response.text();
+        log.textContent += `✅ ステータス: ${response.status}\n`;
+        log.textContent += `📩 サーバ応答:\n${text}\n`;
+
+      } catch (err) {
+        console.error(err);
+        log.textContent += `❌ エラー:\n${err.message}\n`;
+      }
+    }
+
+    window.testSend = testSend;
+  </script>
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 2rem;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+    textarea {
+      width: 100%;
+      height: 80px;
+      margin-top: 0.5rem;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    pre {
+      margin-top: 1.5rem;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+  </style>
 </head>
 <body>
-  <h1>🔐 Secure Push Test</h1>
+  <h1>🧩 secureSendPush() テスト</h1>
+  <label for="msg">送信メッセージ：</label>
+  <textarea id="msg" placeholder="ここに送信メッセージを入力"></textarea>
+  <button onclick="testSend()">送信テスト</button>
 
-  <button id="btn-register">通知登録</button>
-  <button id="btn-send">テスト送信</button>
-
-  <pre id="log"></pre>
-
-  <script type="module">
-    import { secureSendPush } from './js/secureSendPush.js';
-    import { SERVER_API_URL } from './js/constants.js';
-
-    const log = (msg) => {
-      const pre = document.getElementById("log");
-      pre.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-    };
-
-    // Service Worker 登録
-    navigator.serviceWorker.register('sw.js').then(() => {
-      log("ServiceWorker registered.");
-    });
-
-    // 通知登録
-    document.getElementById('btn-register').onclick = async () => {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        return log("通知許可が必要です。");
-      }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array('<VAPID公開鍵>')
-      });
-      localStorage.setItem("subscription", JSON.stringify(sub.toJSON()));
-      log("通知登録完了。");
-    };
-
-    // テスト送信
-    document.getElementById('btn-send').onclick = async () => {
-      const sub = JSON.parse(localStorage.getItem("subscription"));
-      if (!sub) return log("通知登録が未完了。");
-
-      const payload = {
-        senderId: "alice",
-        recipientId: "bob",
-        message: "テストメッセージ from client"
-      };
-
-      const res = await secureSendPush(payload, sub);
-      log(`送信完了: ${res.status}`);
-    };
-
-    // Base64 helper
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-      const rawData = atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
-    }
-  </script>
+  <pre id="log">待機中...</pre>
 </body>
 </html>
