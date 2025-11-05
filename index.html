@@ -1,54 +1,42 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>通知許可テスト</title>
+  <meta charset="UTF-8" />
+  <title>通知購読テスト</title>
 </head>
 <body>
-  <h2> 通知許可テスト</h2>
-  <button id="btn-register">通知許可をリクエスト</button>
+  <h2>🔔 WebPush購読テスト</h2>
+  <button id="btn">通知許可をリクエスト</button>
   <pre id="log"></pre>
 
   <script type="module">
     import { requestNotificationPermission } from "./src/utils/requestNotificationPermission.js";
 
     const log = (msg) => {
-      console.log(msg);
       document.getElementById("log").textContent += msg + "\n";
     };
 
-    async function registerSW() {
-      if (!('serviceWorker' in navigator)) {
-        log("❌ Service Worker非対応のブラウザです");
-        return null;
-      }
+    document.getElementById("btn").addEventListener("click", async () => {
+      log("⏳ Service Worker 登録中...");
       try {
-        // ✅ パスを絶対パスにして「/big/service-worker.js」を指定
-        const reg = await navigator.serviceWorker.register("/big/service-worker.js");
+        const registration = await navigator.serviceWorker.register("/big/service-worker.js");
         log("✅ Service Worker 登録成功");
-        return reg;
-      } catch (err) {
-        log("❌ Service Worker登録失敗: " + err.message);
-        return null;
-      }
-    }
 
-    document.getElementById("btn-register").onclick = async () => {
-      const reg = await registerSW();
-      if (!reg) return;
+        const result = await requestNotificationPermission(registration);
 
-      try {
-        const result = await requestNotificationPermission(reg);
-        if (result.error) {
-          log("❌ 通知許可エラー: " + result.error);
-        } else {
+        if (result?.error) {
+          log("❌ エラー: " + result.error);
+        } else if (result?.subscription) {
           log("✅ 通知購読成功");
-          log(JSON.stringify(result.subscription, null, 2));
+          log(JSON.stringify(result.subscription, null, 2));  // ← ここで中身出す
+        } else {
+          log("⚠️ 不明な戻り値: " + JSON.stringify(result));
         }
+
       } catch (err) {
-        log("❌ 実行エラー: " + err.message);
+        log("❌ 例外発生: " + err.message);
       }
-    };
+    });
   </script>
 </body>
 </html>
