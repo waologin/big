@@ -4,7 +4,7 @@
  */
 export async function requestNotificationPermission() {
   const VAPID_PUBLIC_KEY = "BGWYAYFk7U10CUO_gFbRh3-L-eKTZM0ZeKoWRpCouRpG5lWHxFfZRcJWBZ_AXrIqJZitKXR8ScTUriSRxgIu8ig"; // ←サーバの /vapidPublicKey で取得したものを固定で埋め込む
-  const serviceWorkerPath = "/service-worker.js"; // 必要に応じて変更
+  const serviceWorkerPath = "big/service-worker.js"; // 必要に応じて変更
 
   try {
     // === 1️⃣ 通知許可状態を確認 ===
