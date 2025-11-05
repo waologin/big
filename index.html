@@ -1,75 +1,51 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>Web Push Test</title>
+  <meta charset="UTF-8" />
+  <title>Pushテスト</title>
 </head>
 <body>
-  <h2>通知テスト</h2>
-
-  <button id="btn-register">通知を許可＆登録</button>
-  <button id="btn-send">Push送信テスト</button>
-
-  <pre id="log"></pre>
+  <button id="btnRegister">🔔 通知登録</button>
+  <button id="btnSend">📨 メッセージ送信</button>
 
   <script type="module">
-    import { requestNotificationPermission } from "./src/utils/requestNotificationPermission.js";
-    import { secureSendPush } from "./src/utils/secureSendPush.js";
-
-    const log = (msg) => {
-      console.log(msg);
-      document.getElementById("log").textContent += msg + "\n";
-    };
+    import { requestNotificationPermission } from "./requestNotificationPermission.js";
+    import { secureSendPush } from "./secureSendPush.js";
 
     let subscription = null;
 
-    // ====== 1️⃣ Service Worker登録 ======
-    async function registerSW() {
-      if (!("serviceWorker" in navigator)) {
-        log("❌ このブラウザはService Worker非対応です");
-        return;
-      }
-      const reg = await navigator.serviceWorker.register("/big/service-worker.js");
-      log("✅ Service Worker 登録完了");
-      return reg;
-    }
-
-    // ====== 2️⃣ 通知許可＆購読情報取得 ======
-    document.getElementById("btn-register").onclick = async () => {
+    // --- 通知登録ボタン ---
+    document.getElementById("btnRegister").addEventListener("click", async () => {
       try {
-        const reg = await registerSW();
-        const result = await requestNotificationPermission(reg);
-        if (result.error) {
-          log("❌ 通知許可エラー: " + result.error);
-          return;
-        }
-        subscription = result.subscription;
-        log("✅ 通知購読成功");
-        log(JSON.stringify(subscription, null, 2));
+        console.log("🔄 通知登録中...");
+        subscription = await requestNotificationPermission();
+        console.log("✅ 通知購読成功:", subscription);
       } catch (err) {
-        log("❌ 登録中にエラー: " + err.message);
+        console.error("❌ 通知登録失敗:", err);
       }
-    };
+    });
 
-    // ====== 3️⃣ Push送信テスト ======
-    document.getElementById("btn-send").onclick = async () => {
+    // --- メッセージ送信ボタン ---
+    document.getElementById("btnSend").addEventListener("click", async () => {
       if (!subscription) {
-        log("⚠️ 先に通知登録してください。");
+        console.warn("⚠️ 先に通知登録してください。");
         return;
       }
+
+      const params = {
+        senderId: "alice",
+        recipientId: "bob",
+        message: "テストメッセージ from browser"
+      };
+
       try {
-        const params = {
-          senderId: "tester",
-          recipientId: "me",
-          message: "テスト通知です 📬"
-        };
+        console.log("📤 送信中...");
         const res = await secureSendPush(params, subscription);
-        const data = await res.json();
-        log("✅ Push送信結果: " + JSON.stringify(data));
+        console.log("✅ サーバ応答:", await res.text());
       } catch (err) {
-        log("❌ Push送信エラー: " + err.message);
+        console.error("❌ エラー:", err);
       }
-    };
+    });
   </script>
 </body>
 </html>
