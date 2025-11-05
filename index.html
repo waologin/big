@@ -29,7 +29,7 @@
         log("❌ このブラウザはService Worker非対応です");
         return;
       }
-      const reg = await navigator.serviceWorker.register("/service-worker.js");
+      const reg = await navigator.serviceWorker.register("/big/service-worker.js");
       log("✅ Service Worker 登録完了");
       return reg;
     }
