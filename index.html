@@ -1,51 +1,54 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>Pushテスト</title>
+  <meta charset="UTF-8">
+  <title>通知許可テスト</title>
 </head>
 <body>
-  <button id="btnRegister">🔔 通知登録</button>
-  <button id="btnSend">📨 メッセージ送信</button>
+  <h2>🔔 通知許可テスト</h2>
+  <button id="btn-register">通知許可をリクエスト</button>
+  <pre id="log"></pre>
 
   <script type="module">
-    import { requestNotificationPermission } from "./requestNotificationPermission.js";
-    import { secureSendPush } from "./secureSendPush.js";
+    import { requestNotificationPermission } from "./src/utils/requestNotificationPermission.js";
 
-    let subscription = null;
+    const log = (msg) => {
+      console.log(msg);
+      document.getElementById("log").textContent += msg + "\n";
+    };
 
-    // --- 通知登録ボタン ---
-    document.getElementById("btnRegister").addEventListener("click", async () => {
+    async function registerSW() {
+      if (!('serviceWorker' in navigator)) {
+        log("❌ Service Worker非対応のブラウザです");
+        return null;
+      }
       try {
-        console.log("🔄 通知登録中...");
-        subscription = await requestNotificationPermission();
-        console.log("✅ 通知購読成功:", subscription);
+        // ✅ パスを絶対パスにして「/big/service-worker.js」を指定
+        const reg = await navigator.serviceWorker.register("/big/service-worker.js");
+        log("✅ Service Worker 登録成功");
+        return reg;
       } catch (err) {
-        console.error("❌ 通知登録失敗:", err);
+        log("❌ Service Worker登録失敗: " + err.message);
+        return null;
       }
-    });
+    }
 
-    // --- メッセージ送信ボタン ---
-    document.getElementById("btnSend").addEventListener("click", async () => {
-      if (!subscription) {
-        console.warn("⚠️ 先に通知登録してください。");
-        return;
-      }
-
-      const params = {
-        senderId: "alice",
-        recipientId: "bob",
-        message: "テストメッセージ from browser"
-      };
+    document.getElementById("btn-register").onclick = async () => {
+      const reg = await registerSW();
+      if (!reg) return;
 
       try {
-        console.log("📤 送信中...");
-        const res = await secureSendPush(params, subscription);
-        console.log("✅ サーバ応答:", await res.text());
+        const result = await requestNotificationPermission(reg);
+        if (result.error) {
+          log("❌ 通知許可エラー: " + result.error);
+        } else {
+          log("✅ 通知購読成功");
+          log(JSON.stringify(result.subscription, null, 2));
+        }
       } catch (err) {
-        console.error("❌ エラー:", err);
+        log("❌ 実行エラー: " + err.message);
       }
-    });
+    };
   </script>
 </body>
 </html>
