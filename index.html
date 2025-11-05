@@ -1,91 +1,67 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="theme-color" content="#1a1a1a">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="manifest.json">
-  <meta charset="UTF-8">
-  <title>secureSendPush </title>
-  <script type="module">
-    import { secureSendPush } from "./src/utils/secureSendPush.js";
-
-    const subscription = {
-      "endpoint": "https://web.push.apple.com/QCHB3_7Y5YUEI6BojdhsVXV0LRQW0FWvwOGdxc0ksozenwjwU93kcf4XzXm3P-WoVNvwOxLCAAspGwaZoRAqHn1l-23NAHq-4MHDfLYa-xEDNKZ2y9G8mH6lKH90nXdM3agjCkUa9gneCFrRdpi5x9vPPzFo3skPFxUg0iRmSzw",
-      "keys": {
-        "p256dh": "BHBKuLumhD7tByLIav14QadvvdqPTo0GY62Yd55_GSotVc9WFXROHE9VrLJKHFku90sznWkYAhdpnRibu7sVSFQ",
-        "auth": "l6_s9y3wDqqtc8cbTjOk2Q"
-      }
-    };
-
-    async function testSend() {
-      const log = document.getElementById("log");
-      log.textContent = "🔄 送信中..\n";
-
-      try {
-        const response = await secureSendPush(
-          {
-            senderId: "alice",
-            recipientId: "bob",
-            message: document.getElementById("msg").value || "テストメッセージ"
-          },
-          subscription
-        );
-
-        const text = await response.text();
-        log.textContent += `✅ ステータス: ${response.status}\n`;
-        log.textContent += `📩 サーバ応答:\n${text}\n`;
-
-      } catch (err) {
-        console.error(err);
-        log.textContent += `❌ エラー:\n${err.message}\n`;
-      }
-    }
-
-    window.testSend = testSend;
-  </script>
-
+  <meta charset="UTF-8" />
+  <title>🔔 Push購読テスト</title>
   <style>
     body {
-      font-family: system-ui, sans-serif;
-      margin: 2rem;
-      background: #f8fafc;
-      color: #1e293b;
+      font-family: "Segoe UI", sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fafafa;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    textarea {
-      width: 100%;
-      height: 80px;
-      margin-top: 0.5rem;
-      font-size: 14px;
-      font-family: monospace;
-    }
+    h1 { color: #333; }
     button {
-      margin-top: 1rem;
-      padding: 0.6rem 1.2rem;
-      background: #2563eb;
-      color: white;
+      padding: 10px 18px;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
+      background: #007bff;
+      color: white;
+      font-size: 16px;
+      border-radius: 6px;
       cursor: pointer;
     }
+    button:hover {
+      background: #0056b3;
+    }
     pre {
-      margin-top: 1.5rem;
-      background: #1e293b;
-      color: #e2e8f0;
-      padding: 1rem;
-      border-radius: 8px;
-      font-size: 13px;
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 6px;
       overflow-x: auto;
     }
   </style>
 </head>
 <body>
-  <h1>🧩 secureSendPush() テスト</h1>
-  <label for="msg">送信メッセージ：</label>
-  <textarea id="msg" placeholder="ここに送信メッセージを入力"></textarea>
-  <button onclick="testSend()">送信テスト</button>
+  <h1>🔔 Push通知テスト</h1>
+  <p>以下のボタンで通知許可を取得し、購読情報を表示します。</p>
+  <button id="btnSubscribe">通知を許可して購読する</button>
 
-  <pre id="log">待機中...</pre>
+  <h3>📡 購読情報</h3>
+  <pre id="output">（まだ未取得）</pre>
+
+  <script type="module">
+    import { getPushSubscription } from "./src/utils/getPushSubscription.js";
+
+    const btn = document.getElementById("btnSubscribe");
+    const output = document.getElementById("output");
+
+    btn.addEventListener("click", async () => {
+      output.textContent = "⏳ 通知登録中...";
+      try {
+        const sub = await getPushSubscription();
+        if (!sub) {
+          output.textContent = "❌ 通知が許可されなかったか、エラーが発生しました。";
+          return;
+        }
+        output.textContent = JSON.stringify(sub, null, 2);
+      } catch (err) {
+        output.textContent = "⚠️ エラー: " + err.message;
+        console.error(err);
+      }
+    });
+  </script>
 </body>
 </html>
