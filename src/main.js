@@ -120,3 +120,60 @@ onPush(async (payload) => {
     console.error('[app] decrypt failed', err);
   }
 });
+
+// src/main.js
+import { listenToSWMessages, onPush, onControl } from './push/handler.js'; // 実装済みと仮定
+
+async function registerSW(){
+  if (!('serviceWorker' in navigator)) {
+    console.warn('ServiceWorker unsupported');
+    return null;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    console.log('[main] SW registered', reg.scope);
+    return reg;
+  } catch (err) {
+    console.error('[main] SW register failed', err);
+    return null;
+  }
+}
+
+async function initUI(){
+  // elements
+  const home = document.getElementById('home');
+  const qrArea = document.getElementById('qrArea');
+  const chatArea = document.getElementById('chatArea');
+  document.getElementById('btnBackHome').addEventListener('click', () => {
+    qrArea.classList.add('hidden'); chatArea.classList.add('hidden'); home.classList.remove('hidden');
+  });
+
+  document.getElementById('modeA').addEventListener('click', async () => {
+    home.classList.add('hidden');
+    qrArea.classList.remove('hidden');
+    // TODO: call A-mode init: request permission, generate RSA keypair, show QR
+    console.log('Aモード: 通知権限要求→QR表示の流れをここに差し込む');
+  });
+
+  document.getElementById('modeB').addEventListener('click', async () => {
+    home.classList.add('hidden');
+    qrArea.classList.remove('hidden');
+    document.getElementById('qrReader').classList.remove('hidden');
+    // TODO: start QR scanner, on success request notification permission and proceed
+    console.log('Bモード: QR読取→通知権限要求→鍵交換 の流れをここに差し込む');
+  });
+}
+
+async function main(){
+  await registerSW();
+  listenToSWMessages();
+  onPush(async (payload) => {
+    console.log('[main] push payload:', payload);
+    // ペイロードの復号はここで呼ぶ（crypto handler を差し替え）
+  });
+  onControl((c) => console.log('[main] control msg', c));
+  await initUI();
+}
+
+main();
+
