@@ -12,7 +12,7 @@
  *   const sub = await requestPushSubscription();
  */
 export async function requestPushSubscription(opts = {}) {
-  const serviceWorkerPath = opts.serviceWorkerPath || '/sw.js';
+  const serviceWorkerPath = opts.serviceWorkerPath || './sw.js';
 
   // --- ここに VAPID 公開鍵（base64url形式）を埋め込む ---
   // 例: 'BM9...XyZ' のような形式（+ → -, / → _, パディングなし）
