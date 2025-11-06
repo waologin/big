@@ -1,8 +1,8 @@
 // src/main/B_side.js
 // B側: QR 読取 → respondToOfferFromQR 実行 → Aに暗号化したAESと自分の購読情報を送信
 
-import { decodeFromQR, parseConnectionQR } from "../utils/qrUtils.js";
-import { respondToOfferFromQR } from "../utils/handshake.js";
+import { decodeFromQR, parseConnectionQR } from "../src/utils/qrUtils.js";
+import { respondToOfferFromQR } from "../src/utils/handshake.js";
 
 const EL = {
   fileInput: null,
