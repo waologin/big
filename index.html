@@ -2,40 +2,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>通知購読テスト</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebRTC QR Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 2rem;
+    }
+    #app {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 480px;
+      margin: auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    button.switch {
+      margin: 0.25rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    }
+    pre {
+      font-size: 0.85rem;
+    }
+  </style>
 </head>
 <body>
-  <h2>🔔 WebPush購読テスト</h2>
-  <button id="btn">通知許可をリクエスト</button>
-  <pre id="log"></pre>
+  <header>
+    <h2>WebRTC QR Handshake Demo</h2>
+    <div>
+      <button class="switch" id="btnA">Aモード</button>
+      <button class="switch" id="btnB">Bモード</button>
+    </div>
+  </header>
+  <div id="app">読み込み中...</div>
 
+  <!-- 各モジュールを読み込み -->
   <script type="module">
-    import { requestNotificationPermission } from "./src/utils/requestNotificationPermission.js";
+    import { mountA } from './src/main/A_side.js';
+    import { mountB } from './src/main/B_side.js';
 
-    const log = (msg) => {
-      document.getElementById("log").textContent += msg + "\n";
-    };
+    const btnA = document.getElementById('btnA');
+    const btnB = document.getElementById('btnB');
 
-    document.getElementById("btn").addEventListener("click", async () => {
-      log("⏳ Service Worker 登録中...");
-      try {
-        const registration = await navigator.serviceWorker.register("/big/service-worker.js");
-        log("✅ Service Worker 登録成功");
+    btnA.addEventListener('click', () => mountA('app'));
+    btnB.addEventListener('click', () => mountB('app'));
 
-        const result = await requestNotificationPermission(registration);
-
-        if (result?.error) {
-          log("❌ エラー: " + result.error);
-        } else if (result?.subscription) {
-          log("✅ 通知購読成功");
-          log(JSON.stringify(result.subscription, null, 2));  // ← ここで中身出す
-        } else {
-          log("⚠️ 不明な戻り値: " + JSON.stringify(result));
-        }
-
-      } catch (err) {
-        log("❌ 例外発生: " + err.message);
-      }
+    // デフォルトはAをロード
+    window.addEventListener('load', () => {
+      mountA('app');
     });
   </script>
 </body>
