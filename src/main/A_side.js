@@ -1,10 +1,10 @@
 // src/main/A_side.js
 // A側: Offer作成・QR表示・Service Worker経由のハンドシェイク受信を扱う
 
-import { createOffer } from "../src/utils/handshake.js";
-import { saveSession } from "../src/utils/sessionStore.js";
-import { importPrivateKey, toBase64, fromBase64 } from "../src/utils/cryptoUtils.js";
-import { importAESKeyFromBase64, decryptMessage } from "../src/utils/messageCrypto.js";
+import { createOffer } from "../utils/handshake.js";
+import { saveSession } from "../utils/sessionStore.js";
+import { importPrivateKey, toBase64, fromBase64 } from "../utils/cryptoUtils.js";
+import { importAESKeyFromBase64, decryptMessage } from "../utils/messageCrypto.js";
 
 const EL = {
   btnCreateOffer: null,
