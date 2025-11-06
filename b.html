@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B端末 - ハンドシェイク受信テスト</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <style>
+    body { font-family: monospace; background: #f5f7fa; padding: 20px; }
+    pre { background: #111; color: #0ff; padding: 10px; height: 60vh; overflow-y: auto; border-radius: 6px; }
+    input[type=file] { margin: 10px 0; }
+    video { width: 300px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🔑 B端末：QR読取 → 鍵生成・送信</h2>
+  <input type="file" accept="image/*" id="qrInput">
+  <button id="startB">ハンドシェイク処理実行</button>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { startHandshakeB } from "./src/main/B_side.js";
+
+    const logEl = document.getElementById("log");
+    const qrInput = document.getElementById("qrInput");
+
+    let qrData = null;
+
+    function log(msg, data) {
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent += `[${time}] ${msg}\n`;
+      if (data) logEl.textContent += JSON.stringify(data, null, 2) + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    qrInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      log("🟡 QR画像読み取り中...");
+      try {
+        const { decodeQRImage } = await import("./src/utils/qrUtils.js");
+        qrData = await decodeQRImage(file);
+        log("✅ QR読み取り成功:", qrData);
+      } catch (err) {
+        log("❌ QR解析失敗: " + err.message);
+      }
+    });
+
+    document.getElementById("startB").addEventListener("click", async () => {
+      if (!qrData) return log("⚠️ QRコードを先に読み取ってください。");
+      log("🚀 ハンドシェイク開始...");
+      try {
+        await startHandshakeB(qrData, log);
+        log("✅ ハンドシェイク完了。AES鍵共有成功。");
+      } catch (err) {
+        log("❌ ハンドシェイクエラー: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
