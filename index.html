@@ -1,47 +1,46 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A端末 - ハンドシェイク送信テスト</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#007bff">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A端末テスト</title>
   <style>
-    body { font-family: monospace; background: #f5f7fa; padding: 20px; }
+    body { font-family: monospace; background: #fafafa; padding: 20px; }
     pre { background: #111; color: #0f0; padding: 10px; height: 60vh; overflow-y: auto; border-radius: 6px; }
-    button { padding: 8px 16px; margin: 5px; font-size: 16px; }
-    canvas { margin-top: 15px; }
+    button { padding: 10px 16px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h2>📡 A端末：QR発行（公開鍵 + 通知登録）</h2>
-  <button id="startA">ハンドシェイク準備開始</button>
+  <h2>📡 A端末 - QR発行テスト</h2>
+  <button id="startA">ハンドシェイク開始</button>
   <pre id="log"></pre>
   <div id="qr"></div>
 
   <script type="module">
-    import { startHandshakeA } from "/big/src/main/A_side.js";
-
     const logEl = document.getElementById("log");
     const qrEl = document.getElementById("qr");
+    const btn = document.getElementById("startA");
 
     function log(msg, data) {
       const time = new Date().toLocaleTimeString();
       logEl.textContent += `[${time}] ${msg}\n`;
       if (data) logEl.textContent += JSON.stringify(data, null, 2) + "\n";
       logEl.scrollTop = logEl.scrollHeight;
+      console.log(msg, data ?? "");
     }
 
-    document.getElementById("startA").addEventListener("click", async () => {
-      log("🟡 ハンドシェイク準備開始...");
+    btn.addEventListener("click", async () => {
+      log("🟡 ボタン押下検知。モジュール読み込み開始...");
       try {
+        const { startHandshakeA } = await import("./src/main/A_side.js");
+        if (!startHandshakeA) throw new Error("startHandshakeA が読み込めませんでした。");
+        log("✅ モジュール読み込み成功。関数実行開始。");
         const result = await startHandshakeA(log);
-        log("✅ 完了！A端末がQRを生成しました。");
-        qrEl.innerHTML = "";
-        qrEl.appendChild(result.qrCanvas);
-        log("📷 QRコード生成完了（B端末でスキャン）");
+        log("✅ ハンドシェイク完了！", result);
+        if (result?.qrCanvas) qrEl.appendChild(result.qrCanvas);
       } catch (err) {
         log("❌ エラー: " + err.message);
+        alert("エラー: " + err.message);
         console.error(err);
       }
     });
