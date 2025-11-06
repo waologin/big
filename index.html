@@ -17,33 +17,39 @@
   <div id="qr"></div>
 
   <script type="module">
-    const logEl = document.getElementById("log");
-    const qrEl = document.getElementById("qr");
-    const btn = document.getElementById("startA");
+  const base = location.origin + location.pathname.split("/").slice(0, -1).join("/");
+  console.log("Base path:", base);
 
-    function log(msg, data) {
-      const time = new Date().toLocaleTimeString();
-      logEl.textContent += `[${time}] ${msg}\n`;
-      if (data) logEl.textContent += JSON.stringify(data, null, 2) + "\n";
-      logEl.scrollTop = logEl.scrollHeight;
-      console.log(msg, data ?? "");
+  async function safeImport(path) {
+    const full = `${base}/src/main/${path}`;
+    console.log("Importing:", full);
+    return await import(full);
+  }
+
+  const logEl = document.getElementById("log");
+  const qrEl = document.getElementById("qr");
+  const btn = document.getElementById("startA");
+
+  function log(msg) {
+    const t = new Date().toLocaleTimeString();
+    logEl.textContent += `[${t}] ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+    console.log(msg);
+  }
+
+  btn.addEventListener("click", async () => {
+    log("🟡 ボタン押下 -> モジュール読み込み開始");
+    try {
+      const { startHandshakeA } = await safeImport("A_side.js");
+      log("✅ モジュール読み込み成功");
+      await startHandshakeA(log);
+      log("✅ 関数実行完了");
+    } catch (err) {
+      log("❌ 読み込み失敗: " + err.message);
+      alert("エラー: " + err.message);
     }
+  });
+</script>
 
-    btn.addEventListener("click", async () => {
-      log("🟡 ボタン押下検知。モジュール読み込み開始...");
-      try {
-        const { startHandshakeA } = await import("./src/main/A_side.js");
-        if (!startHandshakeA) throw new Error("startHandshakeA が読み込めませんでした。");
-        log("✅ モジュール読み込み成功。関数実行開始。");
-        const result = await startHandshakeA(log);
-        log("✅ ハンドシェイク完了！", result);
-        if (result?.qrCanvas) qrEl.appendChild(result.qrCanvas);
-      } catch (err) {
-        log("❌ エラー: " + err.message);
-        alert("エラー: " + err.message);
-        console.error(err);
-      }
-    });
-  </script>
 </body>
 </html>
