@@ -1,69 +1,49 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A端末 - ハンドシェイク送信テスト</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#007bff">
-
-  <title>WebRTC QR Test</title>
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f0f2f5;
-      margin: 0;
-      padding: 2rem;
-    }
-    #app {
-      background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      max-width: 480px;
-      margin: auto;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 1.5rem;
-    }
-    button.switch {
-      margin: 0.25rem;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #007bff;
-      color: white;
-    }
-    pre {
-      font-size: 0.85rem;
-    }
+    body { font-family: monospace; background: #f5f7fa; padding: 20px; }
+    pre { background: #111; color: #0f0; padding: 10px; height: 60vh; overflow-y: auto; border-radius: 6px; }
+    button { padding: 8px 16px; margin: 5px; font-size: 16px; }
+    canvas { margin-top: 15px; }
   </style>
 </head>
 <body>
-  <header>
-    <h2>WebRTC QR Handshake Demo</h2>
-    <div>
-      <button class="switch" id="btnA">Aモード</button>
-      <button class="switch" id="btnB">Bモード</button>
-    </div>
-  </header>
-  <div id="app">読み込み中...</div>
+  <h2>📡 A端末：QR発行（公開鍵 + 通知登録）</h2>
+  <button id="startA">ハンドシェイク準備開始</button>
+  <pre id="log"></pre>
+  <div id="qr"></div>
 
-  <!-- 各モジュールを読み込み -->
   <script type="module">
-    import { mountA } from './main/A_side.js';
-    import { mountB } from './main/B_side.js';
+    import { startHandshakeA } from "./src/main/A_side.js";
 
-    const btnA = document.getElementById('btnA');
-    const btnB = document.getElementById('btnB');
+    const logEl = document.getElementById("log");
+    const qrEl = document.getElementById("qr");
 
-    btnA.addEventListener('click', () => mountA('app'));
-    btnB.addEventListener('click', () => mountB('app'));
+    function log(msg, data) {
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent += `[${time}] ${msg}\n`;
+      if (data) logEl.textContent += JSON.stringify(data, null, 2) + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
 
-    // デフォルトはAをロード
-    window.addEventListener('load', () => {
-      mountA('app');
+    document.getElementById("startA").addEventListener("click", async () => {
+      log("🟡 ハンドシェイク準備開始...");
+      try {
+        const result = await startHandshakeA(log);
+        log("✅ 完了！A端末がQRを生成しました。");
+        qrEl.innerHTML = "";
+        qrEl.appendChild(result.qrCanvas);
+        log("📷 QRコード生成完了（B端末でスキャン）");
+      } catch (err) {
+        log("❌ エラー: " + err.message);
+        console.error(err);
+      }
     });
   </script>
 </body>
