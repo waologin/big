@@ -26,10 +26,6 @@
       padding: 0.5rem 1rem;
       font-size: 1rem;
     }
-    canvas {
-      display: block;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
@@ -48,7 +44,6 @@
     const logEl = document.getElementById("log");
     const qrDisplay = document.getElementById("qrDisplay");
 
-    // --- ログ出力ヘルパー ---
     function log(msg, type = "info") {
       const time = new Date().toISOString().split("T")[1].split(".")[0];
       const prefix =
@@ -63,7 +58,6 @@
       logEl.scrollTop = logEl.scrollHeight;
     }
 
-    // --- モジュール読み込みログ ---
     async function loadModule(name, url) {
       log(`モジュール "${name}" を読み込み中...`, "module");
       try {
@@ -76,15 +70,14 @@
       }
     }
 
-    // --- メイン処理 ---
     (async () => {
       try {
-        // QRユーティリティモジュール読込
-        const { generateQRCode, readQRCodeFromImage } = await loadModule("./src/utils/qrUtils.js");
+        // ✅ 絶対URL指定に変更
+        const MODULE_URL = "https://waologin.github.io/big/src/utils/qrUtils.js";
+        const { generateQRCode, readQRCodeFromImage } = await loadModule("qrUtils.js", MODULE_URL);
 
         log("イベントリスナー登録開始...");
 
-        // ✅ QRコード生成テスト
         document.getElementById("btn-generate").addEventListener("click", async () => {
           try {
             log("QRコード生成ボタン押下");
@@ -96,7 +89,6 @@
           }
         });
 
-        // ✅ QR画像読み取りテスト
         document.getElementById("qrFile").addEventListener("change", async (e) => {
           const file = e.target.files[0];
           if (!file) return;
