@@ -1,204 +1,170 @@
-// src/utils/qrUtils.js
-// QRユーティリティ（堅牢版：動的フェールバックで外部ライブラリを読み込み）
-// 使う側はこれまで通り： encodeToQR(), decodeFromQR(), generateConnectionQR(), parseConnectionQR()
+import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs";
 
-let _QRCode = null;
-let _jsQR = null;
+console.log("[qrUtils] ✅ モジュールロード開始 (完全デバッグ版)");
 
-/* ---------- ヘルパー: script を動的挿入 ---------- */
-function loadScriptTag(url) {
-  return new Promise((resolve, reject) => {
-    // 既に読み込まれている場合は即解決
-    if (document.querySelector(`script[src="${url}"]`)) return resolve(url);
-    const s = document.createElement("script");
-    s.src = url;
-    s.async = true;
-    s.onload = () => resolve(url);
-    s.onerror = () => reject(new Error(`Script load failed: ${url}`));
-    document.head.appendChild(s);
-  });
-}
+const QR_CDN = "https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js";
+let QRCodeLib = null;
 
-/* ---------- 動的ライブラリ読み込み（優先順） ---------- */
-async function ensureQRCodeLib() {
-  if (_QRCode) return _QRCode;
-
-  // try jsdelivr ESM
+export async function loadQRCodeLib() {
+  console.group("[qrUtils.loadQRCodeLib]");
   try {
-    const mod = await import("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.esm.js");
-    _QRCode = mod?.default || mod;
-    console.log("[qrUtils] loaded qrcode from jsdelivr esm");
-    return _QRCode;
-  } catch (e) {
-    console.warn("[qrUtils] jsdelivr esm qrcode failed:", e.message);
-  }
+    console.log("🔍 現在の window.QRCode:", window.QRCode);
+    if (QRCodeLib) {
+      console.log("📦 既にキャッシュ済み QRCodeLib を返します");
+      console.groupEnd();
+      return QRCodeLib;
+    }
+    if (typeof window !== "undefined" && window.QRCode) {
+      console.log("✅ window.QRCode が既に存在します");
+      QRCodeLib = window.QRCode;
+      console.groupEnd();
+      return QRCodeLib;
+    }
 
-  // try esm.sh
-  try {
-    const mod = await import("https://esm.sh/qrcode@1.5.3");
-    _QRCode = mod?.default || mod;
-    console.log("[qrUtils] loaded qrcode from esm.sh");
-    return _QRCode;
-  } catch (e) {
-    console.warn("[qrUtils] esm.sh qrcode failed:", e.message);
-  }
-
-  // fallback: UMD via script tag (unpkg)
-  try {
-    await loadScriptTag("https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js");
-    // UMD may expose `QRCode` or `qrcode`
-    _QRCode = window.QRCode || window.qrcode || null;
-    if (_QRCode) {
-      console.log("[qrUtils] loaded qrcode from unpkg UMD");
-      return _QRCode;
+    const existing = Array.from(document.getElementsByTagName("script")).find(
+      (s) => s.src && s.src.includes("qrcode.min.js"),
+    );
+    if (existing) {
+      console.log("🧩 既存の script タグを検出:", existing.src);
     } else {
-      throw new Error("UMD qrcode did not expose global");
-    }
-  } catch (e) {
-    console.error("[qrUtils] qrcode load all strategies failed:", e);
-    throw e;
-  }
-}
-
-async function ensureJsQR() {
-  if (_jsQR) return _jsQR;
-
-  // try jsdelivr mjs
-  try {
-    const mod = await import("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs");
-    _jsQR = mod?.default || mod;
-    console.log("[qrUtils] loaded jsQR from jsdelivr mjs");
-    return _jsQR;
-  } catch (e) {
-    console.warn("[qrUtils] jsdelivr jsQR failed:", e.message);
-  }
-
-  // try esm.sh
-  try {
-    const mod = await import("https://esm.sh/jsqr@1.4.0");
-    _jsQR = mod?.default || mod;
-    console.log("[qrUtils] loaded jsQR from esm.sh");
-    return _jsQR;
-  } catch (e) {
-    console.warn("[qrUtils] esm.sh jsQR failed:", e.message);
-  }
-
-  // fallback: UMD via script tag (unpkg)
-  try {
-    await loadScriptTag("https://unpkg.com/jsqr@1.4.0/dist/jsQR.js");
-    // UMD exposes `jsQR` global
-    _jsQR = window.jsQR || null;
-    if (_jsQR) {
-      console.log("[qrUtils] loaded jsQR from unpkg UMD");
-      return _jsQR;
-    } else {
-      throw new Error("UMD jsQR did not expose global");
-    }
-  } catch (e) {
-    console.error("[qrUtils] jsQR load all strategies failed:", e);
-    throw e;
-  }
-}
-
-/* ---------- 公開API ---------- */
-
-export async function encodeToQR(data) {
-  try {
-    const QR = await ensureQRCodeLib();
-    console.log("[qrUtils] 📤 QR生成開始:", data);
-    const text = typeof data === "string" ? data : JSON.stringify(data);
-
-    // QRCode lib API differences:
-    // - ESM/UMD qrcode supports toDataURL / toCanvas / toString
-    if (QR.toDataURL) {
-      const url = await QR.toDataURL(text, {
-        errorCorrectionLevel: "M",
-        width: 300,
-        margin: 2,
-        scale: 4,
-      });
-      console.log("[qrUtils] ✅ QR生成成功 (toDataURL)");
-      return url;
+      console.log("⚙️ 既存 script がないので新規ロードします");
     }
 
-    // fallback: use generator api if available (qrcode-generator)
-    if (typeof QR === "function") {
-      // qrcode-generator style (create img tag)
-      const qrObj = QR(0, "M");
-      qrObj.addData(text);
-      qrObj.make();
-      // convert to dataURL via created image element
-      const imgTag = qrObj.createImgTag(4); // <img src=...>
-      // extract src
-      const m = imgTag.match(/src="([^"]+)"/);
-      if (m && m[1]) {
-        console.log("[qrUtils] ✅ QR生成成功 (qrcode-generator)");
-        return m[1];
+    return new Promise((resolve, reject) => {
+      const done = () => {
+        console.log("➡️ onload 実行中");
+        if (window.QRCode) {
+          QRCodeLib = window.QRCode;
+          console.log("✅ QRCode ライブラリロード成功!");
+          console.groupEnd();
+          resolve(QRCodeLib);
+        } else {
+          console.error("❌ ロード済みだが window.QRCode が未定義");
+          console.groupEnd();
+          reject(new Error("window.QRCode not found after script load"));
+        }
+      };
+
+      if (existing && window.QRCode) {
+        console.log("♻️ 既存 script + window.QRCode を使用");
+        done();
+        return;
       }
-    }
 
-    throw new Error("QRCode library doesn't support toDataURL or qrcode-generator interface");
+      const s = document.createElement("script");
+      s.src = QR_CDN;
+      s.async = true;
+      s.onload = done;
+      s.onerror = (ev) => {
+        console.error("❌ QRCodeスクリプトロード失敗", ev);
+        console.groupEnd();
+        reject(new Error("Failed to load QRCode script"));
+      };
+      document.head.appendChild(s);
+      console.log("🌐 QRCode ライブラリ読み込み開始:", s.src);
+    });
   } catch (err) {
-    console.error("[qrUtils] ❌ QR生成エラー:", err);
+    console.error("❌ loadQRCodeLib 例外:", err);
+    console.groupEnd();
     throw err;
   }
 }
 
-/**
- * image: HTMLImageElement or HTMLCanvasElement
- */
-export async function decodeFromQR(image) {
+export async function encodeToQR(data) {
+  console.group("[qrUtils.encodeToQR]");
   try {
-    console.log("[qrUtils] 🔍 QR解析開始");
-    const jsqr = await ensureJsQR();
+    console.log("📤 QR生成開始:", data);
+    console.log("🕓 QRCodeLib ロードを待機中…");
+    const QRCode = await loadQRCodeLib();
+    console.log("✅ QRCodeLib ロード完了:", !!QRCode, QRCode);
 
+    if (!QRCode || typeof QRCode.toDataURL !== "function") {
+      console.error("❌ QRCode.toDataURL が利用不可！", QRCode);
+      throw new Error("QRCode.toDataURL not available");
+    }
+
+    const text = typeof data === "string" ? data : JSON.stringify(data);
+    console.log("🧩 QR変換対象テキスト:", text);
+
+    const url = await QRCode.toDataURL(text, {
+      errorCorrectionLevel: "M",
+      width: 300,
+      margin: 2,
+      scale: 4,
+    });
+
+    console.log("✅ QR生成成功 → DataURL 長さ:", url?.length);
+    console.groupEnd();
+    return url;
+  } catch (err) {
+    console.error("❌ QR生成エラー:", err, err?.message, err?.stack);
+    console.groupEnd();
+    throw err;
+  }
+}
+
+export async function decodeFromQR(image) {
+  console.group("[qrUtils.decodeFromQR]");
+  try {
+    console.log("🔍 QR解析開始:", image);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-
-    canvas.width = image.width;
-    canvas.height = image.height;
-    ctx.drawImage(image, 0, 0, image.width, image.height);
-
-    const imageData = ctx.getImageData(0, 0, image.width, image.height);
-    // jsQR expects Uint8ClampedArray
-    const qr = jsqr(imageData.data, image.width, image.height);
-
+    const w = image.width || image.naturalWidth || image.videoWidth;
+    const h = image.height || image.naturalHeight || image.videoHeight;
+    console.log("🧮 サイズ:", { w, h });
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(image, 0, 0, w, h);
+    const imageData = ctx.getImageData(0, 0, w, h);
+    console.log("🧬 画像データ取得:", imageData);
+    const qr = jsQR(imageData.data, w, h);
     if (qr) {
-      console.log("[qrUtils] ✅ QR解析成功:", qr.data);
+      console.log("✅ QR解析成功:", qr.data);
+      console.groupEnd();
       return qr.data;
     } else {
-      console.warn("[qrUtils] ⚠️ QRコードが検出されませんでした");
+      console.warn("⚠️ QRコードが検出されませんでした");
+      console.groupEnd();
       return null;
     }
   } catch (err) {
-    console.error("[qrUtils] ❌ QR解析エラー:", err);
+    console.error("❌ QR解析エラー:", err);
+    console.groupEnd();
     throw err;
   }
 }
 
 export async function generateConnectionQR(info) {
+  console.group("[qrUtils.generateConnectionQR]");
   try {
-    console.log("[qrUtils] 🧩 接続QR生成開始:", info);
+    console.log("🧩 接続QR生成開始:", info);
     const json = JSON.stringify(info);
     const compressed = btoa(json);
+    console.log("📦 Base64化:", compressed);
     const url = await encodeToQR(compressed);
-    console.log("[qrUtils] ✅ 接続QR生成成功");
+    console.log("✅ 接続QR生成成功");
+    console.groupEnd();
     return url;
   } catch (err) {
-    console.error("[qrUtils] ❌ 接続QR生成エラー:", err);
+    console.error("❌ 接続QR生成エラー:", err);
+    console.groupEnd();
     throw err;
   }
 }
 
 export function parseConnectionQR(qrText) {
+  console.group("[qrUtils.parseConnectionQR]");
   try {
-    console.log("[qrUtils] 🔓 QRデータ復号開始");
+    console.log("🔓 QRデータ復号開始:", qrText);
     const decoded = atob(qrText);
+    console.log("📜 Base64 decode:", decoded);
     const obj = JSON.parse(decoded);
-    console.log("[qrUtils] ✅ 復号成功:", obj);
+    console.log("✅ 復号成功:", obj);
+    console.groupEnd();
     return obj;
   } catch (err) {
-    console.error("[qrUtils] ❌ 接続QR復号エラー:", err);
+    console.error("❌ 接続QR復号エラー:", err);
+    console.groupEnd();
     return null;
   }
 }
