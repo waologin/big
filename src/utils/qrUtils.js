@@ -2,6 +2,7 @@
 import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.esm.js";
 import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs";
 
+console.log("[qrUtils] ✅ モジュールロード完了");
 
 /**
  * 任意データをQRコード(Base64 PNG)に変換
@@ -10,15 +11,18 @@ import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs";
  */
 export async function encodeToQR(data) {
   try {
+    console.log("[qrUtils] 📤 QR生成開始:", data);
     const text = typeof data === "string" ? data : JSON.stringify(data);
-    return await QRCode.toDataURL(text, {
+    const url = await QRCode.toDataURL(text, {
       errorCorrectionLevel: "M",
       width: 300,
       margin: 2,
       scale: 4,
     });
+    console.log("[qrUtils] ✅ QR生成成功");
+    return url;
   } catch (err) {
-    console.error("QR生成エラー:", err);
+    console.error("[qrUtils] ❌ QR生成エラー:", err);
     throw err;
   }
 }
@@ -30,6 +34,8 @@ export async function encodeToQR(data) {
  */
 export async function decodeFromQR(image) {
   try {
+    console.log("[qrUtils] 🔍 QR解析開始");
+
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
@@ -40,9 +46,15 @@ export async function decodeFromQR(image) {
     const imageData = ctx.getImageData(0, 0, image.width, image.height);
     const qr = jsQR(imageData.data, image.width, image.height);
 
-    return qr ? qr.data : null;
+    if (qr) {
+      console.log("[qrUtils] ✅ QR解析成功:", qr.data);
+      return qr.data;
+    } else {
+      console.warn("[qrUtils] ⚠️ QRコードが検出されませんでした");
+      return null;
+    }
   } catch (err) {
-    console.error("QR解析エラー:", err);
+    console.error("[qrUtils] ❌ QR解析エラー:", err);
     throw err;
   }
 }
@@ -54,12 +66,14 @@ export async function decodeFromQR(image) {
  */
 export async function generateConnectionQR(info) {
   try {
-    // JSON文字列化して圧縮・エンコード
+    console.log("[qrUtils] 🧩 接続QR生成開始:", info);
     const json = JSON.stringify(info);
     const compressed = btoa(json); // 今は簡易Base64（必要ならLZ圧縮などに変更可）
-    return await encodeToQR(compressed);
+    const url = await encodeToQR(compressed);
+    console.log("[qrUtils] ✅ 接続QR生成成功");
+    return url;
   } catch (err) {
-    console.error("接続QR生成エラー:", err);
+    console.error("[qrUtils] ❌ 接続QR生成エラー:", err);
     throw err;
   }
 }
@@ -71,10 +85,13 @@ export async function generateConnectionQR(info) {
  */
 export function parseConnectionQR(qrText) {
   try {
+    console.log("[qrUtils] 🔓 QRデータ復号開始");
     const decoded = atob(qrText);
-    return JSON.parse(decoded);
+    const obj = JSON.parse(decoded);
+    console.log("[qrUtils] ✅ 復号成功:", obj);
+    return obj;
   } catch (err) {
-    console.error("接続QR復号エラー:", err);
+    console.error("[qrUtils] ❌ 接続QR復号エラー:", err);
     return null;
   }
 }
