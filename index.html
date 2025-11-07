@@ -1,55 +1,20 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>A端末テスト</title>
+  <meta charset="UTF-8">
+  <title>Aサイド - QR発行</title>
   <style>
-    body { font-family: monospace; background: #fafafa; padding: 20px; }
-    pre { background: #111; color: #0f0; padding: 10px; height: 60vh; overflow-y: auto; border-radius: 6px; }
-    button { padding: 10px 16px; font-size: 16px; }
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    #qr { margin-top: 20px; }
+    button { padding: 8px 20px; font-size: 16px; }
   </style>
 </head>
 <body>
-  <h2>📡 A端末 - QR発行テスト</h2>
-  <button id="startA">ハンドシェイク開始</button>
-  <pre id="log"></pre>
+  <h1>🅰️ Aサイド（QR発行）</h1>
+  <button id="startA">QRコードを生成</button>
   <div id="qr"></div>
+  <p id="status"></p>
 
-  <script type="module">
-  const base = location.origin + location.pathname.split("/").slice(0, -1).join("/");
-  console.log("Base path:", base);
-
-  async function safeImport(path) {
-    const full = `${base}/src/main/${path}`;
-    console.log("Importing:", full);
-    return await import(full);
-  }
-
-  const logEl = document.getElementById("log");
-  const qrEl = document.getElementById("qr");
-  const btn = document.getElementById("startA");
-
-  function log(msg) {
-    const t = new Date().toLocaleTimeString();
-    logEl.textContent += `[${t}] ${msg}\n`;
-    logEl.scrollTop = logEl.scrollHeight;
-    console.log(msg);
-  }
-
-  btn.addEventListener("click", async () => {
-    log("🟡 ボタン押下 -> モジュール読み込み開始");
-    try {
-      const { startHandshakeA } = await safeImport("A_side.js");
-      log("✅ モジュール読み込み成功");
-      await startHandshakeA(log);
-      log("✅ 関数実行完了");
-    } catch (err) {
-      log("❌ 読み込み失敗: " + err.message);
-      alert("エラー: " + err.message);
-    }
-  });
-</script>
-
+  <script type="module" src="./js/A_side.js"></script>
 </body>
 </html>
