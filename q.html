@@ -5,90 +5,105 @@
   <title>QR Utils テスト</title>
   <style>
     body {
-      font-family: monospace;
+      font-family: "Segoe UI", sans-serif;
       background: #111;
       color: #eee;
+      margin: 20px;
       padding: 20px;
+    }
+    button {
+      padding: 10px 16px;
+      margin: 5px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #0078d7;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005ea3;
     }
     #log {
       background: #222;
-      border-radius: 8px;
       padding: 10px;
-      max-height: 70vh;
+      margin-top: 15px;
+      height: 240px;
       overflow-y: auto;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
       white-space: pre-wrap;
     }
     img {
       display: block;
-      margin-top: 12px;
-      border: 1px solid #444;
-    }
-    button {
       margin-top: 10px;
-      padding: 8px 16px;
-      background: #444;
-      color: #fff;
-      border: none;
+      max-width: 300px;
+      background: white;
       border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #666;
+      padding: 4px;
     }
   </style>
 </head>
 <body>
-  <h2>🧩 QR Utils テスト</h2>
+  <h1>🧩 QR Utils テスト</h1>
+  <button id="genBtn">QR生成テスト</button>
+  <button id="decodeBtn">QR解析テスト</button>
+  <div id="output">
+    <img id="qrImage" src="" alt="QRコード" />
+  </div>
   <div id="log"></div>
-  <button id="testBtn">QRテスト実行</button>
-  <div id="result"></div>
 
   <script type="module">
-    import * as qr from "./src/utils/qrUtils.js";
+    import {
+      generateConnectionQR,
+      decodeFromQR,
+      parseConnectionQR
+    } from "./qrUtils.js";
 
     const logBox = document.getElementById("log");
-    const resultBox = document.getElementById("result");
+    const qrImage = document.getElementById("qrImage");
 
     function log(msg, type = "info") {
-      const now = new Date().toLocaleTimeString("ja-JP", { hour12: false });
-      const color =
-        type === "error" ? "#f55" :
-        type === "warn" ? "#ffb400" :
-        "#0f0";
-      logBox.innerHTML += `<span style="color:${color}">[${now}] ${msg}</span><br>`;
+      const time = new Date().toLocaleTimeString();
+      const prefix =
+        type === "error" ? "❌" :
+        type === "warn" ? "⚠️" :
+        type === "ok" ? "✅" :
+        "ℹ️";
+      logBox.textContent += `[${time}] ${prefix} ${msg}\n`;
       logBox.scrollTop = logBox.scrollHeight;
     }
 
-    document.getElementById("testBtn").addEventListener("click", async () => {
-      log("🚀 QRテスト開始");
-
+    document.getElementById("genBtn").addEventListener("click", async () => {
+      log("🚀 テスト開始 (QR生成)");
       try {
-        // テストデータ
-        const data = { name: "TestUser", key: "12345", time: Date.now() };
-
-        // QR生成
-        log("📤 QR生成中...");
-        const url = await qr.generateConnectionQR(data);
-        log("✅ QR生成成功");
-
-        const img = document.createElement("img");
-        img.src = url;
-        img.width = 200;
-        resultBox.innerHTML = "";
-        resultBox.appendChild(img);
-
-        // 復号テスト
-        log("🔄 復号テスト中...");
-        const qrText = btoa(JSON.stringify(data));
-        const decoded = qr.parseConnectionQR(qrText);
-        log(`📦 復号結果: ${JSON.stringify(decoded, null, 2)}`);
-
-        log("🎉 テスト完了！");
+        const data = { user: "test", id: Date.now() };
+        const url = await generateConnectionQR(data);
+        qrImage.src = url;
+        log(`✅ 生成成功: ${url.substring(0, 60)}...`, "ok");
       } catch (err) {
-        log(`❌ エラー発生: ${err.message}`, "error");
-        console.error(err);
+        log(`❌ 生成エラー: ${err.message}`, "error");
       }
     });
+
+    document.getElementById("decodeBtn").addEventListener("click", async () => {
+      log("🔍 テスト開始 (QR解析)");
+      try {
+        if (!qrImage.src) {
+          log("⚠️ QR画像がありません。先に生成してください。", "warn");
+          return;
+        }
+        const qrData = await decodeFromQR(qrImage);
+        log(`📦 QR中データ(raw): ${qrData}`);
+        const obj = parseConnectionQR(qrData);
+        log(`✅ 復号結果: ${JSON.stringify(obj)}`, "ok");
+      } catch (err) {
+        log(`❌ 解析エラー: ${err.message}`, "error");
+      }
+    });
+
+    log("✅ ページロード完了。準備OK。");
   </script>
 </body>
 </html>
