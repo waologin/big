@@ -1,6 +1,7 @@
 // src/utils/qrUtils.js
-import QRCode from "qrcode";
-import jsQR from "jsqr";
+import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.esm.js";
+import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs";
+
 
 /**
  * 任意データをQRコード(Base64 PNG)に変換
