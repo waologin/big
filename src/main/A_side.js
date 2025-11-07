@@ -1,5 +1,5 @@
-import { startHandshakeAsA } from '../utils/handshake.js';
-import { saveSession } from '../utils/sessionStore.js';
+import { startHandshakeAsA } from './src/utils/handshake.js';
+import { saveSession } from './src/utils/sessionStore.js';
 
 export async function initAHandshakeUI() {
   const btn = document.getElementById('generateQRBtn');
