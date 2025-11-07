@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QRユーティリティ テスト（詳細ログ）</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #f9f9f9;
+      color: #333;
+      padding: 1rem;
+    }
+    #log {
+      white-space: pre-wrap;
+      background: #111;
+      color: #0f0;
+      padding: 1rem;
+      border-radius: 8px;
+      height: 400px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+    button {
+      margin: 0.5rem 0;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+    canvas {
+      display: block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>QRユーティリティ テスト</h1>
+  <p>詳細ログを下部に出力します。</p>
+
+  <div>
+    <button id="btn-generate">QRコード生成テスト</button><br />
+    <input type="file" id="qrFile" accept="image/*" />
+  </div>
+
+  <div id="qrDisplay"></div>
+  <div id="log"></div>
+
+  <script type="module">
+    const logEl = document.getElementById("log");
+    const qrDisplay = document.getElementById("qrDisplay");
+
+    // --- ログ出力ヘルパー ---
+    function log(msg, type = "info") {
+      const time = new Date().toISOString().split("T")[1].split(".")[0];
+      const prefix =
+        type === "error" ? "❌" :
+        type === "warn" ? "⚠️" :
+        type === "success" ? "✅" :
+        type === "module" ? "📦" :
+        "🕓";
+      const text = `[${time}] ${prefix} ${msg}`;
+      console.log(text);
+      logEl.textContent += text + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // --- モジュール読み込みログ ---
+    async function loadModule(name, url) {
+      log(`モジュール "${name}" を読み込み中...`, "module");
+      try {
+        const mod = await import(url);
+        log(`"${name}" 読み込み成功 ✅`, "success");
+        return mod;
+      } catch (err) {
+        log(`"${name}" 読み込み失敗 ❌: ${err.message}`, "error");
+        throw err;
+      }
+    }
+
+    // --- メイン処理 ---
+    (async () => {
+      try {
+        // QRユーティリティモジュール読込
+        const { generateQRCode, readQRCodeFromImage } = await loadModule("./src/utils/qrUtils.js");
+
+        log("イベントリスナー登録開始...");
+
+        // ✅ QRコード生成テスト
+        document.getElementById("btn-generate").addEventListener("click", async () => {
+          try {
+            log("QRコード生成ボタン押下");
+            const testData = JSON.stringify({ id: "TEST123", msg: "Hello QR" });
+            await generateQRCode(testData, qrDisplay);
+            log("QR生成完了: " + testData, "success");
+          } catch (err) {
+            log("QR生成エラー: " + err.message, "error");
+          }
+        });
+
+        // ✅ QR画像読み取りテスト
+        document.getElementById("qrFile").addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          log("QR画像ファイル選択: " + file.name);
+          try {
+            const text = await readQRCodeFromImage(file);
+            log("QR読み取り成功: " + text, "success");
+          } catch (err) {
+            log("QR読み取り失敗: " + err.message, "error");
+          }
+        });
+
+        log("イベントリスナー登録完了 ✅", "success");
+      } catch (err) {
+        log("初期化エラー: " + err.message, "error");
+      }
+    })();
+  </script>
+</body>
+</html>
