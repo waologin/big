@@ -1,5 +1,5 @@
 // src/utils/qrUtils.js
-import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.esm.js";
+import QRCode from "https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js";
 import jsQR from "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.mjs";
 
 console.log("[qrUtils] ✅ モジュールロード完了");
