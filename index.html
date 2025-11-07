@@ -2,19 +2,19 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Aサイド - QR発行</title>
+  <title>A Side - QR発行</title>
+  <script type="module" src="./A_side.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; }
-    #qr { margin-top: 20px; }
-    button { padding: 8px 20px; font-size: 16px; }
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    #qrCanvas { margin-top: 20px; }
+    .status { margin-top: 10px; color: #444; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>🅰️ Aサイド（QR発行）</h1>
-  <button id="startA">QRコードを生成</button>
-  <div id="qr"></div>
-  <p id="status"></p>
-
-  <script type="module" src="./js/A_side.js"></script>
+  <h1>🅰️ ハンドシェイク発行（A側）</h1>
+  <button id="generateQRBtn">🔐 QRを生成</button>
+  <div id="qrCanvas"></div>
+  <div class="status" id="status"></div>
 </body>
 </html>
